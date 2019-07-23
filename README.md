@@ -28,6 +28,7 @@ Then run `mvn deploy` to deploy the project.
 - `NODE_ENV` - set to `dev` to enable debug logs
 - `PORT` - the network port to listen on
 - `REPOSITORY` - the path where the repository will be stored
+- `AUTH` - a list of users in the format `<username>:<password>:<ro|rw>`
 
 ## License
 
