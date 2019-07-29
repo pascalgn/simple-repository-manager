@@ -1,0 +1,16 @@
+<project>
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>example-it</artifactId>
+    <version>1.0.0</version>
+
+    <name>example-it</name>
+
+    <distributionManagement>
+        <repository>
+            <id>example-it</id>
+            <url>http://localhost:3000/test/</url>
+        </repository>
+    </distributionManagement>
+</project>

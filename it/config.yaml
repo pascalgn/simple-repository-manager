@@ -1,0 +1,6 @@
+port: 3000
+repositories:
+  - name: test
+    path: /tmp/simple-repository-manager-it
+    prefixes:
+      - com.example
