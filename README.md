@@ -16,19 +16,16 @@ To use it in a project, configure the server in your `pom.xml`:
 <distributionManagement>
     <repository>
         <id>test</id>
-        <url>http://localhost:3000/</url>
+        <url>http://localhost:3000/repository/</url>
     </repository>
 </distributionManagement>
 ```
 
 Then run `mvn deploy` to deploy the project.
 
-### Environment variables
+### Configuration
 
-- `NODE_ENV` - set to `dev` to enable debug logs
-- `PORT` - the network port to listen on
-- `REPOSITORY` - the path where the repository will be stored
-- `AUTH` - a list of users in the format `<username>:<password>:<ro|rw>`
+See [example-config.yaml](example-config.yaml)
 
 ## License
 
