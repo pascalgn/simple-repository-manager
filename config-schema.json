@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "definitions": {
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-_]*[A-Za-z0-9]$"
+    },
+    "prefix": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+[0-9a-z_]$"
+    },
+    "users": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "permissions"],
+            "properties": {
+              "type": {
+                "enum": ["anonymous", "authenticated"]
+              },
+              "permissions": {
+                "enum": ["ro", "rw"]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "permissions"],
+            "properties": {
+              "name": {
+                "$ref": "#/definitions/name"
+              },
+              "permissions": {
+                "enum": ["ro", "rw"]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["repositories"],
+  "properties": {
+    "port": {
+      "type": "integer",
+      "default": 3000
+    },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "path", "prefixes"],
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/name"
+          },
+          "path": {
+            "type": "string"
+          },
+          "prefixes": {
+            "anyOf": [
+              {
+                "enum": ["any", "all", "*"]
+              },
+              {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/definitions/prefix"
+                }
+              }
+            ]
+          },
+          "users": {
+            "$ref": "#/definitions/users"
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "repositories"],
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/name"
+          },
+          "repositories": {
+            "anyOf": [
+              {
+                "enum": ["any", "all", "*"]
+              },
+              {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/definitions/name"
+                }
+              }
+            ]
+          },
+          "users": {
+            "$ref": "#/definitions/users"
+          }
+        }
+      }
+    },
+    "users": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "password"],
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/name"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 16
+          }
+        }
+      }
+    }
+  }
+}
