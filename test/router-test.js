@@ -2,7 +2,7 @@ const { describe, it, before } = require("mocha");
 const { expect } = require("chai");
 
 const { parseConfig } = require("../src/config");
-const { getContainer, getRepository } = require("../src/router");
+const { getContainer, getRepository, getFile } = require("../src/router");
 
 const config = {
   repositories: [
@@ -68,5 +68,13 @@ describe("router", () => {
     const container = getContainer(containers, { path });
     const repository = getRepository(container, { path });
     expect(repository).to.have.property("name", "repo3");
+  });
+
+  it("should return the correct file path", () => {
+    const path = "/all/org/example/test/123";
+    const container = getContainer(containers, { path });
+    const repository = getRepository(container, { path });
+    const file = getFile(repository, { path });
+    expect(file).to.equal("/tmp/org/example/test/123");
   });
 });

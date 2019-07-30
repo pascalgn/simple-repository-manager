@@ -1,3 +1,5 @@
+const { join } = require("path");
+
 function getContainer(containers, req) {
   const idx = req.path.indexOf("/", 1);
   if (idx === -1) {
@@ -38,4 +40,19 @@ function getRepository(container, req) {
   }
 }
 
-module.exports = { getContainer, getRepository };
+function getFile(repository, req) {
+  const idx = req.path.indexOf("/", 1);
+  if (idx === -1) {
+    return null;
+  }
+
+  // /test/example/123 -> /example/123
+  const path = req.path.substr(idx);
+
+  const file = join(repository.path, path);
+  return file.startsWith(repository.path + "/") || file === repository.path
+    ? file
+    : null;
+}
+
+module.exports = { getContainer, getRepository, getFile };

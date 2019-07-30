@@ -1,10 +1,10 @@
-const { dirname, join } = require("path");
+const { dirname } = require("path");
 
 const express = require("express");
 const { exists, stat, mkdirs, readdir, writeFile } = require("fs-extra");
 
 const { authenticate } = require("./auth");
-const { getContainer, getRepository } = require("./router");
+const { getContainer, getRepository, getFile } = require("./router");
 
 function createServer(debug, containers, users) {
   const app = express();
@@ -42,7 +42,6 @@ function createServer(debug, containers, users) {
   });
 
   app.use((req, res) => {
-    const { path, method } = req;
     const { container } = res.locals;
 
     const repository = getRepository(container, req);
@@ -50,11 +49,12 @@ function createServer(debug, containers, users) {
       return res.sendStatus(404);
     }
 
-    const file = getFile(repository, path);
+    const file = getFile(repository, req);
     if (file == null) {
       return res.sendStatus(400);
     }
 
+    const { method } = req;
     if (method === "HEAD") {
       handleHead(req, res, file);
     } else if (method === "GET") {
@@ -67,13 +67,6 @@ function createServer(debug, containers, users) {
   });
 
   return app;
-}
-
-function getFile(repository, path) {
-  const file = join(repository.path, path);
-  return file.startsWith(repository.path + "/") || file === repository.path
-    ? file
-    : null;
 }
 
 function handleHead(req, res, file) {
