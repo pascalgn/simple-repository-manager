@@ -23,7 +23,8 @@ const config = {
   groups: [
     {
       name: "all",
-      repositories: "all"
+      repositories: "all",
+      users: [{ type: "anonymous", permissions: "rw" }]
     },
     {
       name: "private",

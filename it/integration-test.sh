@@ -13,7 +13,9 @@ mkdir -p "${REPOSITORY}"
 ../src/main.js ./config.yaml &
 SERVER_PID="$!"
 
-mvn deploy &>target/mvn.log
+if ! mvn deploy &>target/mvn.log; then
+    echo "mvn deploy did not finish successfully!"
+fi
 
 kill ${SERVER_PID}
 

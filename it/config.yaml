@@ -4,3 +4,6 @@ repositories:
     path: /tmp/simple-repository-manager-it
     prefixes:
       - com.example
+    users:
+      - type: anonymous
+        permissions: rw
