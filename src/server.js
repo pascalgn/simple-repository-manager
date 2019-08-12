@@ -33,7 +33,9 @@ function createServer(debug, containers, users) {
     if (status === 200) {
       next();
     } else if (status === 401) {
-      res.header("WWW-Authenticate", "Basic").sendStatus(401);
+      res
+        .header("WWW-Authenticate", 'Basic realm="simple-repository-manager"')
+        .sendStatus(401);
     } else if (status === 403) {
       res.sendStatus(403);
     } else {
