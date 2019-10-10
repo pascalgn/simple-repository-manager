@@ -1,64 +1,71 @@
 const { describe, it } = require("mocha");
 const { expect } = require("chai");
 
-const { authenticate } = require("../src/auth");
+const { authenticate, authorize } = require("../src/auth");
 
 describe("auth", () => {
-  it("should return 200 OK", async () => {
-    const users = { "dXNlcjpwYXNzd29yZA==": "user" };
-    const container = { users: { user: "ro" } };
+  describe("authenticate", () => {
+    it("should return the user", async () => {
+      const users = [{ name: "user", base64: "dXNlcjpwYXNzd29yZA==" }];
+      const headers = { authorization: "Basic dXNlcjpwYXNzd29yZA==" };
+      const result = authenticate({ headers }, { users });
+      expect(result).to.equal("user");
+    });
 
-    const req = {
-      headers: { authorization: "Basic dXNlcjpwYXNzd29yZA==" },
-      method: "GET"
-    };
+    it("should return null when not found", async () => {
+      const users = [{ name: "user", base64: "dXNlcjpwYXNzd29yZA==" }];
+      const headers = { authorization: "Basic dXNlcjpwYXNzd29yZA=" };
+      const result = authenticate({ headers }, { users });
+      expect(result).to.equal(null);
+    });
 
-    const result = authenticate(req, users, container);
-    expect(result).to.equal(200);
+    it("should return null when no auth header given", async () => {
+      const users = [{ name: "user", base64: "dXNlcjpwYXNzd29yZA==" }];
+      const headers = { authorization: "Basic " };
+      const result = authenticate({ headers }, { users });
+      expect(result).to.equal(null);
+    });
+
+    it("should return null when no users given", async () => {
+      const users = [];
+      const headers = { authorization: "Basic dXNlcjpwYXNzd29yZA=" };
+      const result = authenticate({ headers }, { users });
+      expect(result).to.equal(null);
+    });
   });
 
-  it("should return 200 OK for anonymous users", async () => {
-    const users = {};
-    const container = { users: { anonymous: "ro" } };
+  describe("authorize", () => {
+    it("should allow ro access for user", async () => {
+      const users = [{ name: "user", permissions: "ro" }];
+      const result = authorize({ method: "GET" }, "user", { users });
+      expect(result).to.equal(true);
+    });
 
-    const req = { headers: {}, method: "GET" };
+    it("should allow rw access for user", async () => {
+      const users = [{ name: "user", permissions: "rw" }];
+      const result = authorize({ method: "POST" }, "user", { users });
+      expect(result).to.equal(true);
+    });
 
-    const result = authenticate(req, users, container);
-    expect(result).to.equal(200);
-  });
+    it("should disallow rw access for user", async () => {
+      const users = [{ name: "user", permissions: "ro" }];
+      const result = authorize({ method: "POST" }, "user", { users });
+      expect(result).to.equal(false);
+    });
 
-  it("should return 200 OK for authenticated users", async () => {
-    const users = { "dXNlcjpwYXNzd29yZA==": "user" };
-    const container = { users: { authenticated: "ro" } };
+    it("should allow ro access for authenticated users", async () => {
+      const users = [{ type: "authenticated", permissions: "ro" }];
+      const result = authorize({ method: "GET" }, "user", { users });
+      expect(result).to.equal(true);
+    });
 
-    const req = {
-      headers: { authorization: "Basic dXNlcjpwYXNzd29yZA==" },
-      method: "GET"
-    };
-
-    const result = authenticate(req, users, container);
-    expect(result).to.equal(200);
-  });
-
-  it("should return 401 authentication failure", async () => {
-    const container = { users: { user: "ro" } };
-
-    const req = { headers: { authorization: "Basic abc" } };
-
-    const result = authenticate(req, {}, container);
-    expect(result).to.equal(401);
-  });
-
-  it("should return 403 authorization failure", async () => {
-    const users = { "dXNlcjpwYXNzd29yZA==": "user" };
-    const container = { users: { user: "ro" } };
-
-    const req = {
-      headers: { authorization: "Basic dXNlcjpwYXNzd29yZA==" },
-      method: "POST"
-    };
-
-    const result = authenticate(req, users, container);
-    expect(result).to.equal(403);
+    it("should allow ro access for user, not rw", async () => {
+      const users = [
+        { type: "authenticated", permissions: "rw" },
+        { name: "user", permissions: "ro" }
+      ];
+      const result = authorize({ method: "POST" }, "user", { users });
+      expect(result).to.equal(false);
+    });
   });
 });

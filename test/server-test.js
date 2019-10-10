@@ -12,24 +12,29 @@ const { expect } = chai;
 
 let tmpdir = null;
 
-const config = {
+const rawConfig = {
   repositories: [
     {
-      name: "repo",
-      path: "/tmp",
-      prefixes: "all"
+      name: "repo1",
+      prefixes: ["com.example", "org.example"],
+      users: [{ name: "user1", permissions: "rw" }]
+    },
+    {
+      name: "repo2",
+      prefixes: ["com.example"],
+      users: [{ name: "user1", permissions: "rw" }]
     }
   ],
   groups: [
     {
       name: "all",
       repositories: "all",
-      users: [{ type: "anonymous", permissions: "rw" }]
+      users: [{ type: "authenticated", permissions: "rw" }]
     },
     {
       name: "private",
       repositories: "all",
-      users: [{ name: "user1", permissions: "rw" }]
+      users: [{ name: "user1", permissions: "ro" }]
     }
   ],
   users: [
@@ -40,14 +45,16 @@ const config = {
   ]
 };
 
+let config = null;
+
 describe("server", () => {
   beforeEach(async () => {
     const { path } = await dir();
     tmpdir = path;
-
-    for (const repository of config.repositories) {
+    for (const repository of rawConfig.repositories) {
       repository.path = tmpdir;
     }
+    config = await parseConfig(JSON.parse(JSON.stringify(rawConfig)));
   });
 
   afterEach(async () => {
@@ -57,37 +64,60 @@ describe("server", () => {
   });
 
   it("should successfully push data to the server", async () => {
-    const { containers, users } = await parseConfig(config);
-
-    const app = createServer(false, containers, users);
-
+    const app = createServer(false, config);
     return chai
       .request(app)
-      .put("/all/com/example/test.txt")
-      .then(res => expect(res).to.have.status(200));
+      .put("/repo1/com/example/test.txt")
+      .auth("user1", "password-password-password")
+      .then(res => expect(res).to.have.property("text", "OK"));
   });
 
   it("should read data from the server", async () => {
-    const { containers, users } = await parseConfig(config);
-
-    const app = createServer(false, containers, users);
+    const app = createServer(false, config);
 
     const agent = chai.request(app).keepOpen();
     try {
-      await agent.put("/all/com/example/test.txt").send("Test 123");
+      const text = "Test 1234";
 
-      const result = await agent.get("/all/com/example/test.txt");
-      expect(result).to.have.property("text", "Test 123");
+      await agent
+        .put("/repo1/com/example/test.txt")
+        .auth("user1", "password-password-password")
+        .send(text);
+
+      const head = await agent
+        .head("/all/com/example/test.txt")
+        .auth("user1", "password-password-password");
+      expect(head.header).to.have.property("content-length", `${text.length}`);
+
+      const get = await agent
+        .get("/all/com/example/test.txt")
+        .auth("user1", "password-password-password");
+      expect(get).to.have.property("text", text);
     } finally {
       await agent.close();
     }
   });
 
+  it("should return 405 when pushing wrong prefix", async () => {
+    const app = createServer(false, config);
+    return chai
+      .request(app)
+      .put("/repo2/org/example/test.txt")
+      .auth("user1", "password-password-password")
+      .then(res => expect(res).to.have.status(405));
+  });
+
+  it("should return 405 when pushing to group", async () => {
+    const app = createServer(false, config);
+    return chai
+      .request(app)
+      .put("/all/com/example/test.txt")
+      .auth("user1", "password-password-password")
+      .then(res => expect(res).to.have.status(405));
+  });
+
   it("should return 401 when wrong authentication given", async () => {
-    const { containers, users } = await parseConfig(config);
-
-    const app = createServer(false, containers, users);
-
+    const app = createServer(false, config);
     return chai
       .request(app)
       .get("/private/com/example/test.txt")
@@ -96,10 +126,7 @@ describe("server", () => {
   });
 
   it("should complete request when correct authentication given", async () => {
-    const { containers, users } = await parseConfig(config);
-
-    const app = createServer(false, containers, users);
-
+    const app = createServer(false, config);
     return chai
       .request(app)
       .head("/private/com/example/test.txt")

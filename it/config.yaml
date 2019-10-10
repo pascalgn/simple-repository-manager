@@ -5,5 +5,8 @@ repositories:
     prefixes:
       - com.example
     users:
-      - type: anonymous
+      - type: authenticated
         permissions: rw
+users:
+  - name: test
+    password: simple-repository-manager-it

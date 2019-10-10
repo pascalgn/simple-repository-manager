@@ -1,12 +1,11 @@
-const { dirname } = require("path");
+const { join, dirname } = require("path");
 
 const express = require("express");
 const { exists, stat, mkdirs, readdir, writeFile } = require("fs-extra");
 
-const { authenticate } = require("./auth");
-const { getContainer, getRepository, getFile } = require("./router");
+const { authenticate, authorize } = require("./auth");
 
-function createServer(debug, containers, users) {
+function createServer(debug, config) {
   const app = express();
 
   if (debug) {
@@ -17,52 +16,39 @@ function createServer(debug, containers, users) {
     });
   }
 
-  app.use((req, res, next) => {
-    const container = getContainer(containers, req);
-    if (container == null) {
-      res.status(404).send("Repository or group not found.");
-    } else {
-      res.locals.container = container;
-      next();
-    }
-  });
-
-  app.use((req, res, next) => {
-    const { container } = res.locals;
-    const status = authenticate(req, users, container);
-    if (status === 200) {
-      next();
-    } else if (status === 401) {
-      res
-        .header("WWW-Authenticate", 'Basic realm="simple-repository-manager"')
-        .sendStatus(401);
-    } else if (status === 403) {
-      res.sendStatus(403);
-    } else {
-      res.sendStatus(500);
-    }
-  });
-
   app.use((req, res) => {
-    const { container } = res.locals;
-
-    const repository = getRepository(container, req);
-    if (repository == null) {
-      return res.sendStatus(404);
+    const username = authenticate(req, config);
+    if (!username) {
+      return res.header("WWW-Authenticate", "Basic").sendStatus(401);
     }
 
-    const file = getFile(repository, req);
-    if (file == null) {
-      return res.sendStatus(400);
+    if (req.url === "/") {
+      return res.sendStatus(200);
+    }
+
+    const idx = req.path.indexOf("/", 1);
+    const name = idx === -1 ? req.path : req.path.substr(1, idx - 1);
+    const path = idx === -1 ? "" : req.path.substr(idx);
+
+    const container = config.containers.find(
+      container => container.name === name
+    );
+
+    if (container == null) {
+      return res.status(404).send(`Group or repository not found: ${name}`);
+    }
+
+    if (!authorize(req, username, container)) {
+      return res.sendStatus(403);
     }
 
     const { method } = req;
     if (method === "HEAD") {
-      handleHead(req, res, file);
+      handleHead(req, res, container, path);
     } else if (method === "GET") {
-      handleGet(req, res, file);
+      handleGet(req, res, container, path);
     } else if (method === "PUT") {
-      handlePut(req, res, file);
+      handlePut(req, res, container, path);
     } else {
       res.sendStatus(405);
     }
@@ -71,33 +57,80 @@ function createServer(debug, containers, users) {
   return app;
 }
 
-function handleHead(req, res, file) {
-  stat(file).then(() => res.sendStatus(200), err => sendError(res, err));
+function handleHead(req, res, container, path) {
+  findFile(container, path).then(
+    ([stats]) =>
+      res
+        .header("Content-Length", stats.size)
+        .status(200)
+        .send(),
+    err => sendError(res, err)
+  );
 }
 
-function handleGet(req, res, file) {
-  if (req.url === "/") {
-    readdir(file).then(files => res.json(files), err => sendError(res, err));
+function handleGet(req, res, container, path) {
+  findFile(container, path).then(
+    ([stats, file]) =>
+      stats.isDirectory()
+        ? readdir(file).then(
+            files => res.json(files),
+            err => sendError(res, err)
+          )
+        : res.sendFile(file, err => sendError(res, err)),
+    err => sendError(res, err)
+  );
+}
+
+function handlePut(req, res, container, path) {
+  if (container.type === "group") {
+    res.status(405).send("PUT not supported for groups!");
   } else {
-    res.sendFile(file, err => sendError(res, err));
+    const file = join(container.path, path);
+    if (!acceptFile(container, file)) {
+      res.status(405).send(`File does not match any prefix: ${path}`);
+    } else if (allowReplace(file)) {
+      writeReceivedFile(req, res, file);
+    } else {
+      exists(file).then(
+        fileExists => {
+          if (fileExists) {
+            res.status(400).send("Cannot overwrite release artifacts!");
+          } else {
+            writeReceivedFile(req, res, file);
+          }
+        },
+        err => sendError(res, err)
+      );
+    }
   }
 }
 
-function handlePut(req, res, file) {
-  if (allowReplace(file)) {
-    writeReceivedFile(req, res, file);
+async function findFile(container, path) {
+  if (container.type === "repository") {
+    const file = join(container.path, path);
+    const stats = await stat(file);
+    return [stats, file];
   } else {
-    exists(file).then(
-      fileExists => {
-        if (fileExists) {
-          res.status(400).send("Cannot overwrite release artifacts!");
+    for (let i = 0; i < container.repositories.length; i++) {
+      const repository = container.repositories[i];
+      const file = join(repository.path, path);
+      try {
+        const stats = await stat(file);
+        return [stats, file];
+      } catch (e) {
+        if (i + 1 < container.repositories.length) {
+          continue;
         } else {
-          writeReceivedFile(req, res, file);
+          throw e;
         }
-      },
-      err => sendError(res, err)
-    );
+      }
+    }
+    throw new Error("Unexpected error.");
   }
+}
+
+function acceptFile(repository, file) {
+  return repository.prefixes.find(prefix => file.startsWith(prefix)) != null;
 }
 
 function allowReplace(file) {
@@ -117,7 +150,7 @@ function writeReceivedFile(req, res, file) {
       req
         .on("data", data => parts.push(data))
         .on("error", err => sendError(res, err))
-        .on("end", async () => {
+        .on("end", () => {
           const body = Buffer.concat(parts);
           writeFile(file, body).then(
             () => res.sendStatus(200),

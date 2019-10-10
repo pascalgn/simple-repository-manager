@@ -7,41 +7,37 @@
     },
     "prefix": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+[0-9a-z_]$"
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)+[A-Za-z0-9_-]$"
     },
-    "users": {
-      "type": "array",
-      "default": [],
-      "items": {
-        "anyOf": [
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["type", "permissions"],
-            "properties": {
-              "type": {
-                "enum": ["anonymous", "authenticated"]
-              },
-              "permissions": {
-                "enum": ["ro", "rw"]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["name", "permissions"],
-            "properties": {
-              "name": {
-                "$ref": "#/definitions/name"
-              },
-              "permissions": {
-                "enum": ["ro", "rw"]
-              }
+    "user": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "permissions"],
+          "properties": {
+            "type": {
+              "enum": ["authenticated"]
+            },
+            "permissions": {
+              "enum": ["ro", "rw"]
             }
           }
-        ]
-      }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "permissions"],
+          "properties": {
+            "name": {
+              "$ref": "#/definitions/name"
+            },
+            "permissions": {
+              "enum": ["ro", "rw"]
+            }
+          }
+        }
+      ]
     }
   },
   "type": "object",
@@ -58,7 +54,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "path", "prefixes"],
+        "required": ["name", "path"],
         "properties": {
           "name": {
             "$ref": "#/definitions/name"
@@ -67,21 +63,18 @@
             "type": "string"
           },
           "prefixes": {
-            "anyOf": [
-              {
-                "enum": ["any", "all", "*"]
-              },
-              {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                  "$ref": "#/definitions/prefix"
-                }
-              }
-            ]
+            "type": "array",
+            "default": [],
+            "items": {
+              "$ref": "#/definitions/prefix"
+            }
           },
           "users": {
-            "$ref": "#/definitions/users"
+            "type": "array",
+            "default": [],
+            "items": {
+              "$ref": "#/definitions/user"
+            }
           }
         }
       }
@@ -100,7 +93,7 @@
           "repositories": {
             "anyOf": [
               {
-                "enum": ["any", "all", "*"]
+                "enum": ["all"]
               },
               {
                 "type": "array",
@@ -112,7 +105,11 @@
             ]
           },
           "users": {
-            "$ref": "#/definitions/users"
+            "type": "array",
+            "default": [],
+            "items": {
+              "$ref": "#/definitions/user"
+            }
           }
         }
       }

@@ -22,18 +22,19 @@ async function main() {
     help: "Show debugging output"
   });
 
-  parser.addArgument(["config"], {
+  parser.addArgument(["configFile"], {
     metavar: "<config>",
     nargs: "+",
     help: "Configuration file to use"
   });
 
   const args = parser.parseArgs();
-  const { debug, config } = args;
+  const { debug, configFile } = args;
 
-  const { port, containers, users } = await readConfig(...config);
-  const app = createServer(debug, containers, users);
+  const config = await readConfig(...configFile);
+  const app = createServer(debug, config);
 
+  const { port } = config;
   app.listen(port, () => console.log(`Server is listening on port ${port}`));
 }
 

@@ -1,43 +1,46 @@
-function authenticate(req, users, container) {
-  if (Object.keys(container.users).length === 0) {
-    return 401;
-  }
-
-  const { headers, method } = req;
-
-  const username = getUsername(headers, users);
-  let permissions = username
-    ? container.users[username] || container.users["authenticated"]
-    : container.users["anonymous"];
-
-  if (permissions === "ro") {
-    if (method === "HEAD" || method === "GET") {
-      return 200;
-    } else {
-      return 403;
-    }
-  } else if (permissions === "rw") {
-    return 200;
-  } else {
-    return 401;
-  }
-}
-
-function getUsername(headers, users) {
+function authenticate(req, config) {
+  const { headers } = req;
   const header = headers && headers["authorization"];
   if (!header || !header.startsWith("Basic ")) {
     return null;
   }
 
   const base64 = header.substr(6);
-  const username = users[base64];
-  const ownProperty = Object.prototype.hasOwnProperty.call(users, base64);
+  for (const user of config.users) {
+    if (user.base64 && user.base64 === base64) {
+      return user.name;
+    }
+  }
 
-  if (username && ownProperty) {
-    return username;
+  return null;
+}
+
+function authorize(req, username, container) {
+  let permissions = null;
+  for (const user of container.users) {
+    if (user.name === username) {
+      permissions = user.permissions;
+      break;
+    }
+  }
+
+  if (permissions == null) {
+    for (const user of container.users) {
+      if (user.type === "authenticated") {
+        permissions = user.permissions;
+        break;
+      }
+    }
+  }
+
+  if (permissions === "ro") {
+    const { method } = req;
+    return method === "HEAD" || method === "GET";
+  } else if (permissions === "rw") {
+    return true;
   } else {
-    return null;
+    return false;
   }
 }
 
-module.exports = { authenticate };
+module.exports = { authenticate, authorize };
