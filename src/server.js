@@ -1,9 +1,20 @@
-const { join, dirname } = require("path");
+const { join, basename, dirname } = require("path");
+const { env } = require("process");
 
 const express = require("express");
-const { exists, stat, mkdirs, readdir, writeFile } = require("fs-extra");
+const {
+  exists,
+  stat,
+  mkdirs,
+  readdir,
+  createWriteStream,
+  unlink,
+  move
+} = require("fs-extra");
 
 const { authenticate, authorize } = require("./auth");
+
+const log = env.NODE_TEST ? () => {} : (...args) => console.log(...args);
 
 function createServer(debug, config) {
   const app = express();
@@ -82,27 +93,44 @@ function handleGet(req, res, container, path) {
 }
 
 function handlePut(req, res, container, path) {
-  if (container.type === "group") {
+  if (!acceptFile(path)) {
+    res.status(405).send(`Invalid file path: ${path}`);
+  } else if (container.type === "group") {
     res.status(405).send("PUT not supported for groups!");
   } else {
     const file = join(container.path, path);
-    if (!acceptFile(container, file)) {
+    if (!matchPrefix(container, file)) {
       res.status(405).send(`File does not match any prefix: ${path}`);
     } else if (allowReplace(file)) {
-      writeReceivedFile(req, res, file);
+      writeReceivedFile(req, res, file).then(
+        () => res.sendStatus(200),
+        err => sendError(res, err)
+      );
     } else {
       exists(file).then(
         fileExists => {
           if (fileExists) {
             res.status(400).send("Cannot overwrite release artifacts!");
           } else {
-            writeReceivedFile(req, res, file);
+            writeReceivedFile(req, res, file).then(
+              () => res.sendStatus(200),
+              err => sendError(res, err)
+            );
           }
         },
         err => sendError(res, err)
       );
     }
   }
+}
+
+function acceptFile(path) {
+  const filename = basename(path);
+  return (
+    !filename.startsWith(".") &&
+    !filename.startsWith(" ") &&
+    !filename.endsWith(" ")
+  );
 }
 
 async function findFile(container, path) {
@@ -129,7 +157,7 @@ async function findFile(container, path) {
   }
 }
 
-function acceptFile(repository, file) {
+function matchPrefix(repository, file) {
   return repository.prefixes.find(prefix => file.startsWith(prefix)) != null;
 }
 
@@ -142,24 +170,31 @@ function allowReplace(file) {
   );
 }
 
-function writeReceivedFile(req, res, file) {
+async function writeReceivedFile(req, res, file) {
   const parent = dirname(file);
-  mkdirs(parent).then(
-    () => {
-      const parts = [];
-      req
-        .on("data", data => parts.push(data))
-        .on("error", err => sendError(res, err))
-        .on("end", () => {
-          const body = Buffer.concat(parts);
-          writeFile(file, body).then(
-            () => res.sendStatus(200),
-            err => sendError(res, err)
-          );
-        });
-    },
-    err => sendError(res, err)
-  );
+  await mkdirs(parent);
+
+  const tmpfile = join(parent, `.${basename(file)}.tmp`);
+  try {
+    const tmpstream = createWriteStream(tmpfile);
+    try {
+      await new Promise((resolve, reject) => {
+        req
+          .pipe(tmpstream)
+          .on("error", err => reject(err))
+          .on("finish", () => resolve());
+      });
+    } catch (e) {
+      tmpstream.close();
+      throw e;
+    }
+    await move(tmpfile, file, { overwrite: true });
+  } catch (e) {
+    await unlink(tmpfile);
+    throw e;
+  }
+
+  log("File written:", file);
 }
 
 function sendError(res, err) {
@@ -167,6 +202,7 @@ function sendError(res, err) {
     if (err && err.code === "ENOENT") {
       res.sendStatus(404);
     } else {
+      log("Error!", err);
       res.sendStatus(500);
     }
   }

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "test": "mocha --timeout=8000 --check-leaks test/",
+    "test": "NODE_TEST=true mocha --timeout=8000 --check-leaks test/",
     "it": "cd it && ./integration-test.sh"
   },
   "dependencies": {
@@ -22,7 +22,7 @@
     "chai": "^4.2.0",
     "chai-http": "^4.3.0",
     "eslint": "^6.5.1",
-    "mocha": "^6.2.1",
+    "mocha": "^6.2.2",
     "tmp-promise": "^2.0.2"
   },
   "eslintConfig": {

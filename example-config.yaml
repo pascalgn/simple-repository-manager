@@ -1,14 +1,16 @@
 port: 3000
 repositories:
   - name: example
+    path: /tmp
     prefixes:
       - com.example
       - org.example
   - name: hello-world
+    path: /tmp
     prefixes:
       - com.hello-world
   - name: 3rd-party
-    prefixes: any
+    path: /tmp
 groups:
   - name: all
     repositories: all
