@@ -30,7 +30,9 @@ function createServer(debug, config) {
   app.use((req, res) => {
     const username = authenticate(req, config);
     if (!username) {
-      return res.header("WWW-Authenticate", "Basic").sendStatus(401);
+      return res
+        .header("WWW-Authenticate", 'Basic realm="simple-repository-manager"')
+        .sendStatus(401);
     }
 
     if (req.url === "/") {
