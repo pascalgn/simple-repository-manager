@@ -10,18 +10,18 @@ describe("config", () => {
         repositories: [
           {
             name: "repo1",
-            path: "/tmp",
+            path: "/",
             prefixes: ["com.example"],
             users: [{ type: "authenticated", permissions: "ro" }]
           },
           {
             name: "repo2",
-            path: "/tmp",
+            path: "/",
             prefixes: ["com.example.test"]
           },
           {
             name: "repo3",
-            path: "/tmp",
+            path: "/",
             users: [{ name: "testuser1", permissions: "rw" }]
           }
         ],

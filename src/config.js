@@ -1,4 +1,4 @@
-const { join, resolve } = require("path");
+const { sep, join, resolve } = require("path");
 
 const { exists, readJson, readFile } = require("fs-extra");
 const { safeLoad } = require("js-yaml");
@@ -75,10 +75,10 @@ function parseRepository(repository) {
   const path = resolve(repository.path);
   const prefixes =
     repository.prefixes.length === 0
-      ? [path + "/"]
+      ? [path + sep]
       : repository.prefixes
-          .map(prefix => prefix.replace(/\./g, "/"))
-          .map(p => resolve(path, p) + "/");
+          .map(prefix => prefix.replace(/\./g, sep))
+          .map(p => resolve(path, p) + sep);
   return { name, type: "repository", path, prefixes, users };
 }
 

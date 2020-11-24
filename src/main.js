@@ -12,23 +12,28 @@ const pkg = require("../package.json");
 async function main() {
   const parser = new ArgumentParser({
     prog: pkg.name,
-    version: pkg.version,
-    addHelp: true,
+    add_help: true,
     description: pkg.description
   });
 
-  parser.addArgument(["-d", "--debug"], {
-    action: "storeTrue",
+  parser.add_argument("--version", {
+    action: "version",
+    version: pkg.version,
+    help: "Show version number and exit"
+  });
+
+  parser.add_argument("-d", "--debug", {
+    action: "store_true",
     help: "Show debugging output"
   });
 
-  parser.addArgument(["configFile"], {
+  parser.add_argument("configFile", {
     metavar: "<config>",
     nargs: "+",
     help: "Configuration file to use"
   });
 
-  const args = parser.parseArgs();
+  const args = parser.parse_args();
   const { debug, configFile } = args;
 
   const config = await readConfig(...configFile);

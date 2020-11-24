@@ -8,22 +8,22 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "test": "NODE_TEST=true mocha --timeout=8000 --check-leaks test/",
+    "test": "mocha --timeout=8000 --check-leaks test/",
     "it": "cd it && ./integration-test.sh"
   },
   "dependencies": {
-    "ajv": "^6.10.2",
-    "argparse": "^1.0.7",
+    "ajv": "^6.12.6",
+    "argparse": "^2.0.1",
     "express": "^4.17.1",
-    "fs-extra": "^8.1.0",
-    "js-yaml": "^3.13.1"
+    "fs-extra": "^9.0.1",
+    "js-yaml": "^3.14.0"
   },
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-http": "^4.3.0",
-    "eslint": "^6.6.0",
-    "mocha": "^6.2.2",
-    "tmp-promise": "^2.0.2"
+    "eslint": "^7.14.0",
+    "mocha": "^8.2.1",
+    "tmp-promise": "^3.0.2"
   },
   "eslintConfig": {
     "env": {
@@ -31,7 +31,7 @@
       "es6": true
     },
     "parserOptions": {
-      "ecmaVersion": "2018"
+      "ecmaVersion": 2018
     },
     "extends": "eslint:recommended"
   }
