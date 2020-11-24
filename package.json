@@ -25,6 +25,10 @@
     "mocha": "^8.2.1",
     "tmp-promise": "^3.0.2"
   },
+  "prettier": {
+    "arrowParens": "avoid",
+    "trailingComma": "none"
+  },
   "eslintConfig": {
     "env": {
       "node": true,

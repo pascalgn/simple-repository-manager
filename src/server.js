@@ -36,11 +36,14 @@ function createServer(debug, config) {
     }
 
     if (req.url === "/") {
-      return res.sendStatus(200);
+      const names = config.containers
+        .filter(container => authorize(req, username, container))
+        .map(container => container.name);
+      return sendHtmlListing(req, res, names);
     }
 
     const idx = req.path.indexOf("/", 1);
-    const name = idx === -1 ? req.path : req.path.substr(1, idx - 1);
+    const name = idx === -1 ? req.path.substr(1) : req.path.substr(1, idx - 1);
     const path = idx === -1 ? "" : req.path.substr(idx);
 
     const container = config.containers.find(
@@ -72,11 +75,7 @@ function createServer(debug, config) {
 
 function handleHead(req, res, container, path) {
   findFile(container, path).then(
-    ([stats]) =>
-      res
-        .header("Content-Length", stats.size)
-        .status(200)
-        .send(),
+    ([stats]) => res.header("Content-Length", stats.size).status(200).send(),
     err => sendError(res, err)
   );
 }
@@ -86,7 +85,7 @@ function handleGet(req, res, container, path) {
     ([stats, file]) =>
       stats.isDirectory()
         ? readdir(file).then(
-            files => res.json(files),
+            files => sendHtmlListing(req, res, files),
             err => sendError(res, err)
           )
         : res.sendFile(file, err => sendError(res, err)),
@@ -197,6 +196,23 @@ async function writeReceivedFile(req, res, file) {
   }
 
   log("File written:", file);
+}
+
+function sendHtmlListing(req, res, paths) {
+  const path = req.path.replace(/[^A-Za-z0-9./_-]+/g, "").replace(/\/+$/, "");
+  res.send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${path || "home"} - simple-repository-manager</title>
+</head>
+<body>
+  <ul>
+    ${path ? `<li><a href="${path}/..">..</a></li>` : ""}
+    ${paths.map(p => `<li><a href="${path}/${p}">${p}</a></li>`).join("")}
+  </ul>
+</body>
+</html>`);
 }
 
 function sendError(res, err) {
